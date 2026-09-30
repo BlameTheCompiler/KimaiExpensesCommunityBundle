@@ -21,7 +21,7 @@
             <tbody>
             {% for expense in expenses %}
                 <tr>
-                    <td>{{ expense.date|date('Y-m-d H:i', false) }}</td>
+                    <td>{{ expense.date|date('Y-m-d H:i', timezone) }}</td>
                     <td>
                         <strong>{{ expense.category.name }}</strong>
                         {% if expense.description %}

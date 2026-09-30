@@ -34,6 +34,7 @@ final class ExpenseController extends AbstractController
         return $this->render('@KimaiExpensesCommunity/expense/index.html.twig', [
             'expenses' => $this->expenses->findVisibleForUser($user, $canSeeOtherUsers),
             'title' => 'Expenses',
+            'timezone' => $user->getTimezone(),
         ]);
     }
 
@@ -45,11 +46,11 @@ final class ExpenseController extends AbstractController
 
         $expense = new Expense();
         $expense->setUser($user);
-        $expense->setDate(new \DateTime('now', new \DateTimeZone($user->getTimezone())));
 
         $form = $this->createForm(ExpenseType::class, $expense, [
             'action' => $this->generateUrl('kimai_expenses_community_create'),
             'can_edit_cost' => $this->isGranted('edit_kimai_expenses_community_cost'),
+            'timezone' => $user->getTimezone(),
         ]);
         $form->handleRequest($request);
 
@@ -79,6 +80,8 @@ final class ExpenseController extends AbstractController
     #[IsGranted('edit_kimai_expenses_community')]
     public function edit(int $id, Request $request): Response
     {
+        $user = $this->getAuthenticatedUser();
+
         $expense = $this->findExpense($id);
         $this->assertUserCanModify($expense);
 
@@ -89,6 +92,7 @@ final class ExpenseController extends AbstractController
         $form = $this->createForm(ExpenseType::class, $expense, [
             'action' => $this->generateUrl('kimai_expenses_community_edit', ['id' => $id]),
             'can_edit_cost' => $this->isGranted('edit_kimai_expenses_community_cost'),
+            'timezone' => $user->getTimezone(),
         ]);
         $form->handleRequest($request);
 
