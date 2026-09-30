@@ -79,14 +79,20 @@ class Expense
         return $this->id;
     }
 
+    /**
+     * The date is a "floating" wall-clock time: the digits typed into the form
+     * are the digits stored in the database. It is always handed out labelled as
+     * UTC so nothing downstream can shift it between time zones.
+     */
     public function getDate(): \DateTimeInterface
     {
-        return $this->date;
+        return new \DateTime($this->date->format('Y-m-d H:i:s'), new \DateTimeZone('UTC'));
     }
 
     public function setDate(\DateTimeInterface $date): self
     {
-        $this->date = $date;
+        // Keep only the wall-clock digits; Doctrine writes exactly these.
+        $this->date = new \DateTime($date->format('Y-m-d H:i:s'), new \DateTimeZone('UTC'));
         return $this;
     }
 

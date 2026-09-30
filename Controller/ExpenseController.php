@@ -45,6 +45,7 @@ final class ExpenseController extends AbstractController
 
         $expense = new Expense();
         $expense->setUser($user);
+        $expense->setDate(new \DateTime('now', new \DateTimeZone($user->getTimezone())));
 
         $form = $this->createForm(ExpenseType::class, $expense, [
             'action' => $this->generateUrl('kimai_expenses_community_create'),

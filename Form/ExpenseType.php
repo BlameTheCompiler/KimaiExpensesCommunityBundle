@@ -29,12 +29,11 @@ final class ExpenseType extends AbstractType
         // Doctrine reads DATETIME columns as wall-clock time in PHP's default
         // timezone, so use that for both sides. No conversion happens, which is
         // why the stored time can't drift or roll over to another day.
-        $timezone = date_default_timezone_get();
         $builder
             ->add('date', DateTimePickerType::class, [
                 'label' => 'Date and time',
-                'model_timezone' => $timezone,
-                'view_timezone' => $timezone,
+                'model_timezone' => 'UTC',
+                'view_timezone' => 'UTC',
             ])
             ->add('category', EntityType::class, [
                 'class' => ExpenseCategory::class,
