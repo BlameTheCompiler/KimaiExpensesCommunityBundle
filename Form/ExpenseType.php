@@ -9,7 +9,7 @@ use App\Entity\Customer;
 use App\Entity\Project;
 use KimaiPlugin\KimaiExpensesCommunityBundle\Entity\Expense;
 use KimaiPlugin\KimaiExpensesCommunityBundle\Entity\ExpenseCategory;
-use KimaiPlugin\KimaiExpensesCommunityBundle\Form\Type\TrimmedDecimalType;
+use KimaiPlugin\KimaiExpensesCommunityBundle\Form\TrimmedDecimalType;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractType;
 use Symfony\Component\Form\Extension\Core\Type\CheckboxType;
