@@ -26,12 +26,14 @@ final class ExpenseType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options): void
     {
         $canEditCost = (bool) $options['can_edit_cost'];
-        $timezone = (string) $options['timezone'];
+        // Doctrine reads DATETIME columns as wall-clock time in PHP's default
+        // timezone, so use that for both sides. No conversion happens, which is
+        // why the stored time can't drift or roll over to another day.
+        $timezone = date_default_timezone_get();
         $builder
             ->add('date', DateTimePickerType::class, [
                 'label' => 'Date and time',
-//                'widget' => 'single_text',
-                'model_timezone' => 'UTC',
+                'model_timezone' => $timezone,
                 'view_timezone' => $timezone,
             ])
             ->add('category', EntityType::class, [
@@ -97,10 +99,8 @@ final class ExpenseType extends AbstractType
         $resolver->setDefaults([
             'data_class' => Expense::class,
             'can_edit_cost' => false,
-            'timezone' => date_default_timezone_get(),
         ]);
 
         $resolver->setAllowedTypes('can_edit_cost', 'bool');
-        $resolver->setAllowedTypes('timezone', 'string');
     }
 }

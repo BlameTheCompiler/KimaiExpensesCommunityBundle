@@ -34,7 +34,6 @@ final class ExpenseController extends AbstractController
         return $this->render('@KimaiExpensesCommunity/expense/index.html.twig', [
             'expenses' => $this->expenses->findVisibleForUser($user, $canSeeOtherUsers),
             'title' => 'Expenses',
-            'timezone' => $user->getTimezone(),
         ]);
     }
 
@@ -50,7 +49,6 @@ final class ExpenseController extends AbstractController
         $form = $this->createForm(ExpenseType::class, $expense, [
             'action' => $this->generateUrl('kimai_expenses_community_create'),
             'can_edit_cost' => $this->isGranted('edit_kimai_expenses_community_cost'),
-            'timezone' => $user->getTimezone(),
         ]);
         $form->handleRequest($request);
 
@@ -87,12 +85,9 @@ final class ExpenseController extends AbstractController
         // a changed cost, even if they manipulate the HTML form in a browser.
         $originalCost = $expense->getCost();
 
-        $user = $this->getAuthenticatedUser();
-
         $form = $this->createForm(ExpenseType::class, $expense, [
             'action' => $this->generateUrl('kimai_expenses_community_edit', ['id' => $id]),
             'can_edit_cost' => $this->isGranted('edit_kimai_expenses_community_cost'),
-            'timezone' => $user->getTimezone(),
         ]);
         $form->handleRequest($request);
 

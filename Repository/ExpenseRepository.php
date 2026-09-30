@@ -46,4 +46,24 @@ final class ExpenseRepository extends ServiceEntityRepository
             ->getQuery()
             ->getSingleScalarResult();
     }
+    /**
+     * Create the base query used when retrieving expenses for invoices.
+     *
+     * Keeping this in the repository gives us one place to evolve the query
+     * when we add receipt fields, custom fields, or more invoice filters later.
+     */
+    public function createInvoiceQueryBuilder(): \Doctrine\ORM\QueryBuilder
+    {
+        return $this->createQueryBuilder('expense')
+            ->leftJoin('expense.category', 'category')
+            ->addSelect('category')
+            ->leftJoin('expense.user', 'expenseUser')
+            ->addSelect('expenseUser')
+            ->leftJoin('expense.customer', 'customer')
+            ->addSelect('customer')
+            ->leftJoin('expense.project', 'project')
+            ->addSelect('project')
+            ->leftJoin('expense.activity', 'activity')
+            ->addSelect('activity');
+    }
 }
