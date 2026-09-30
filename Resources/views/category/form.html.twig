@@ -1,26 +1,189 @@
 {% extends '@KimaiExpensesCommunity/expense/base.html.twig' %}
 
 {% block expense_content %}
+{# Keep Extended settings open if the cost field has a validation error. #}
+{% set costHasErrors = form.cost.vars.errors|length > 0 %}
+
 <div class="card">
     <div class="card-body">
         {{ form_start(form) }}
         {{ form_errors(form) }}
 
-        {{ form_row(form.name) }}
-
         <div class="row">
-            <div class="col-md-4">{{ form_row(form.unit) }}</div>
-            <div class="col-md-4">{{ form_row(form.defaultCost) }}</div>
-            <div class="col-md-4">{{ form_row(form.visible) }}</div>
+            <div class="col-md-4">{{ form_row(form.customer) }}</div>
+            <div class="col-md-4">{{ form_row(form.project) }}</div>
+            <div class="col-md-4">{{ form_row(form.activity) }}</div>
         </div>
 
-        {{ form_row(form.helpText) }}
+        <div class="row">
+            <div class="col-md-6">
+                {{ form_row(form.category) }}
+            </div>
+            <div class="col-md-6">
+                {{ form_row(form.quantity) }}
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col-12">
+                {{ form_row(form.date) }}
+            </div>
+        </div>
+
+        {{ form_row(form.billable) }}
         {{ form_row(form.description) }}
 
-        <button type="submit" class="btn btn-primary">Save category</button>
-        <a class="btn btn-secondary" href="{{ path('kimai_expenses_community_category') }}">Cancel</a>
+        <div class="accordion mt-3" id="expense-extended-accordion">
+            <div class="accordion-item">
+                <h2 class="accordion-header" id="expense-extended-heading">
+                    <button class="accordion-button{{ costHasErrors ? '' : ' collapsed' }}" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#expense-extended"
+                            aria-expanded="{{ costHasErrors ? 'true' : 'false' }}" aria-controls="expense-extended">
+                        Extended settings
+                    </button>
+                </h2>
+                <div id="expense-extended" class="accordion-collapse collapse{{ costHasErrors ? ' show' : '' }}"
+                     aria-labelledby="expense-extended-heading">
+                    <div class="accordion-body">
+                        {{ form_row(form.cost) }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="alert alert-info mt-3">
+            <strong>Calculated total:</strong>
+            <span id="expense-total">0.00</span>
+            <span id="expense-unit-label"></span>
+        </div>
+
+        <div class="mt-4">
+            <button type="submit" class="btn btn-primary">Save expense</button>
+            <a class="btn btn-secondary" href="{{ path('kimai_expenses_community') }}">Cancel</a>
+        </div>
 
         {{ form_end(form) }}
     </div>
 </div>
+
+<script>
+(function () {
+    const customer = document.getElementById('{{ form.customer.vars.id }}');
+    const project = document.getElementById('{{ form.project.vars.id }}');
+    const category = document.getElementById('{{ form.category.vars.id }}');
+    const quantity = document.getElementById('{{ form.quantity.vars.id }}');
+    const cost = document.getElementById('{{ form.cost.vars.id }}');
+    const total = document.getElementById('expense-total');
+    const unitLabel = document.getElementById('expense-unit-label');
+    const extended = document.getElementById('expense-extended');
+    const extendedToggle = document.querySelector('[data-bs-target="#expense-extended"]');
+    const canEditCost = {{ form.cost.vars.disabled ? 'false' : 'true' }};
+
+    // "0.7000" -> "0.70", "1.0000" -> "1.00", "0.6725" -> "0.6725"
+    function formatDecimal(value, minDecimals) {
+        const text = String(value).trim();
+        if (!/^-?\d+(\.\d+)?$/.test(text)) {
+            return text;
+        }
+        const parts = text.split('.');
+        let fraction = (parts[1] || '').replace(/0+$/, '');
+        while (fraction.length < minDecimals) {
+            fraction += '0';
+        }
+        return fraction ? parts[0] + '.' + fraction : parts[0];
+    }
+
+    // ---- Customer -> Project -------------------------------------------------
+    // Keep every project option in memory, then rebuild the <select> with only the
+    // selected customer's projects (rebuilding works in every browser, unlike
+    // hiding <option> elements).
+    const allProjectOptions = project ? Array.from(project.options) : [];
+    const projectPlaceholder = allProjectOptions.find(function (o) { return o.value === ''; }) || null;
+
+    function projectsFor(customerId, alwaysKeep) {
+        return allProjectOptions.filter(function (o) {
+            if (o.value === '') {
+                return false;
+            }
+            return customerId === '' || o.dataset.customer === customerId || o.value === alwaysKeep;
+        });
+    }
+
+    function renderProjects(options, selectedValue) {
+        project.innerHTML = '';
+        if (projectPlaceholder) {
+            project.appendChild(projectPlaceholder);
+        }
+        options.forEach(function (o) { project.appendChild(o); });
+        project.value = selectedValue;
+    }
+
+    if (customer && project) {
+        // Initial load (new or edit): narrow the list, but never drop or change
+        // the project that is already selected.
+        const current = project.value;
+        renderProjects(projectsFor(customer.value, current), current);
+
+        customer.addEventListener('change', function () {
+            const previous = project.value;
+            const matches = projectsFor(customer.value, '');
+
+            let next = matches.some(function (o) { return o.value === previous; }) ? previous : '';
+            if (customer.value !== '' && matches.length === 1) {
+                next = matches[0].value; // only one project for this customer: select it
+            }
+
+            renderProjects(matches, next);
+
+            if (project.value !== previous) {
+                project.dispatchEvent(new Event('change', { bubbles: true }));
+            }
+        });
+    }
+
+    // ---- Category -> Cost, totals --------------------------------------------
+    function selectedCategory() {
+        return category ? category.options[category.selectedIndex] : null;
+    }
+
+    function updateRateFromCategory() {
+        if (!category || !cost || !canEditCost) {
+            return;
+        }
+
+        const option = selectedCategory();
+        const rate = option ? option.dataset.defaultCost : null;
+        if (rate !== null && rate !== undefined && rate !== '') {
+            cost.value = formatDecimal(rate, 2);
+        }
+    }
+
+    function updateTotal() {
+        const q = parseFloat(quantity?.value || '0');
+        const c = parseFloat(cost?.value || '0');
+        const result = Number.isFinite(q * c) ? q * c : 0;
+        total.textContent = result.toFixed(2);
+
+        const option = selectedCategory();
+        unitLabel.textContent = option ? ' ' + (option.textContent || '') : '';
+    }
+
+    // The cost field lives in a collapsed accordion. If the browser rejects it
+    // (e.g. it was cleared), open the accordion so the message is visible.
+    cost?.addEventListener('invalid', function () {
+        extended?.classList.add('show');
+        extendedToggle?.classList.remove('collapsed');
+        extendedToggle?.setAttribute('aria-expanded', 'true');
+    });
+
+    category?.addEventListener('change', function () {
+        updateRateFromCategory();
+        updateTotal();
+    });
+    quantity?.addEventListener('input', updateTotal);
+    cost?.addEventListener('input', updateTotal);
+
+    updateTotal();
+})();
+</script>
 {% endblock %}
